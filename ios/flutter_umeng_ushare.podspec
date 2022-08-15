@@ -22,7 +22,7 @@ A new flutter plugin project.
   
   s.dependency 'UMShare/UI'
   #集成微信(完整版14.4M)
-  s.dependency 'UMShare/Social/WeChat'
+  #s.dependency 'UMShare/Social/WeChat'
   #集成QQ/QZone/TIM(完整版7.6M)
   s.dependency 'UMShare/Social/QQ'
   #集成新浪微博(完整版25.3M)
