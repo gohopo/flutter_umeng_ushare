@@ -3,6 +3,7 @@ package com.beyongx.flutter_umeng_ushare;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
+import androidx.annotation.NonNull;
 
 import com.umeng.commonsdk.UMConfigure;
 import com.umeng.socialize.PlatformConfig;
@@ -19,37 +20,53 @@ import com.umeng.socialize.media.UMusic;
 import java.util.HashMap;
 import java.util.Map;
 
+import io.flutter.embedding.engine.plugins.FlutterPlugin;
+import io.flutter.embedding.engine.plugins.activity.ActivityAware;
+import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding;
 import io.flutter.plugin.common.MethodCall;
 import io.flutter.plugin.common.MethodChannel;
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler;
 import io.flutter.plugin.common.MethodChannel.Result;
 import io.flutter.plugin.common.PluginRegistry.ActivityResultListener;
-import io.flutter.plugin.common.PluginRegistry.Registrar;
 import io.flutter.plugin.common.PluginRegistry.RequestPermissionsResultListener;
 
 
 /**
  * UmengUsharePlugin
  */
-public class UmengUsharePlugin implements MethodCallHandler, ActivityResultListener, RequestPermissionsResultListener {
-    private final Registrar registrar;
-    private final MethodChannel channel;
-
-    //android package name;
+public class UmengUsharePlugin implements FlutterPlugin, MethodCallHandler, ActivityAware, ActivityResultListener, RequestPermissionsResultListener {
+    public static MethodChannel channel;
+    public static Context context;
+    public static Activity activity;
     private static String applicationId = "";
 
-    /**
-     * Plugin registration.
-     */
-    public static void registerWith(Registrar registrar) {
-        final MethodChannel channel = new MethodChannel(registrar.messenger(), "flutter_umeng_ushare");
-        channel.setMethodCallHandler(new UmengUsharePlugin(registrar, channel));
+    @Override
+    public void onAttachedToEngine(@NonNull FlutterPluginBinding flutterPluginBinding) {
+        final MethodChannel channel = new MethodChannel(flutterPluginBinding.getBinaryMessenger(), "flutter_umeng_ushare");
+        channel.setMethodCallHandler(this);
+        context = flutterPluginBinding.getApplicationContext();
+    }
+    @Override
+    public void onDetachedFromEngine(@NonNull FlutterPluginBinding binding) {
+        channel.setMethodCallHandler(null);
     }
 
-    private UmengUsharePlugin(Registrar registrar, MethodChannel channel) {
-        this.registrar = registrar;
-        this.registrar.addActivityResultListener(this);
-        this.channel = channel;
+    @Override
+    public void onAttachedToActivity(ActivityPluginBinding binding) {
+        activity = binding.getActivity();
+        binding.addActivityResultListener(this);
+    }
+    @Override
+    public void onDetachedFromActivityForConfigChanges() {
+
+    }
+    @Override
+    public void onReattachedToActivityForConfigChanges(ActivityPluginBinding binding) {
+
+    }
+    @Override
+    public void onDetachedFromActivity() {
+
     }
 
     @Override
@@ -99,7 +116,7 @@ public class UmengUsharePlugin implements MethodCallHandler, ActivityResultListe
             shareMiniApp(username, title, desc, thumb, url, path, result);
         } else if (call.method.equals("checkInstall")) {
             int platform = call.argument("platform");
-            boolean flag = UMShareAPI.get(registrar.context()).isInstall(registrar.activity(), getPlatForm(platform));
+            boolean flag = UMShareAPI.get(context).isInstall(activity, getPlatForm(platform));
             result.success(flag);
         } else {
             result.notImplemented();
@@ -108,7 +125,7 @@ public class UmengUsharePlugin implements MethodCallHandler, ActivityResultListe
 
     //初始化友盟配置
     private void initUMConfigure(String appkey, String applicationId) {
-        UMConfigure.init(registrar.context(), appkey, "umeng_share", UMConfigure.DEVICE_TYPE_PHONE, "");
+        UMConfigure.init(context, appkey, "umeng_share", UMConfigure.DEVICE_TYPE_PHONE, "");
         UmengUsharePlugin.applicationId = applicationId;
     }
 
@@ -214,14 +231,13 @@ public class UmengUsharePlugin implements MethodCallHandler, ActivityResultListe
     }
 
     private void shareText(SHARE_MEDIA platform, String text, final Result result) {
-        new ShareAction(registrar.activity()).setPlatform(platform)
+        new ShareAction(activity).setPlatform(platform)
                 .withText(text)
-                .setCallback(new UmengShareActionListener(registrar.activity(), result)).share();
+                .setCallback(new UmengShareActionListener(activity, result)).share();
     }
 
     private void shareImage(SHARE_MEDIA platform, String thumb, String image, final Result result) {
 
-        final Activity activity = registrar.activity();
         UMImage thumbImage = new UMImage(activity, thumb);
         UMImage sImage = new UMImage(activity, image);
         sImage.setThumb(thumbImage);
@@ -233,7 +249,6 @@ public class UmengUsharePlugin implements MethodCallHandler, ActivityResultListe
 
     private void shareMedia(SHARE_MEDIA platform, int sharetype, String title, String desc, String thumb, String link, final Result result) {
 
-        Activity activity = registrar.activity();
         if (sharetype == 0) {
             UMImage thumbImage = new UMImage(activity, thumb);
             UMusic music = new UMusic(link);
@@ -273,21 +288,21 @@ public class UmengUsharePlugin implements MethodCallHandler, ActivityResultListe
 
     private void shareMiniApp(String username, String title, String desc, String thumb, String url, String path, final Result result) {
         UMMin umMin = new UMMin(url);
-        umMin.setThumb(new UMImage(registrar.activity(), thumb));
+        umMin.setThumb(new UMImage(activity, thumb));
         umMin.setTitle(title);
         umMin.setDescription(desc);
         umMin.setPath(path);
         umMin.setUserName(username);
-        new ShareAction(registrar.activity())
+        new ShareAction(activity)
                 .withMedia(umMin)
                 .setPlatform(SHARE_MEDIA.WEIXIN)
-                .setCallback(new UmengShareActionListener(registrar.activity(), result)).share();
+                .setCallback(new UmengShareActionListener(activity, result)).share();
     }
 
 
     private void login(SHARE_MEDIA platform, final Result result) {
 
-        UMShareAPI.get(registrar.activity()).getPlatformInfo(registrar.activity(), platform, new UMAuthListener() {
+        UMShareAPI.get(activity).getPlatformInfo(activity, platform, new UMAuthListener() {
             @Override
             public void onStart(SHARE_MEDIA share_media) {
 
@@ -319,7 +334,7 @@ public class UmengUsharePlugin implements MethodCallHandler, ActivityResultListe
 
     @Override
     public boolean onActivityResult(int i, int i1, Intent intent) {
-        UMShareAPI.get(registrar.activity()).onActivityResult(i, i1, intent);
+        UMShareAPI.get(activity).onActivityResult(i, i1, intent);
         return false;
     }
 
