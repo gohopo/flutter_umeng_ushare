@@ -48,7 +48,7 @@ public class UmengUsharePlugin implements FlutterPlugin, MethodCallHandler, Acti
     }
     @Override
     public void onDetachedFromEngine(@NonNull FlutterPluginBinding binding) {
-        channel.setMethodCallHandler(null);
+        if(channel!=null) channel.setMethodCallHandler(null);
     }
 
     @Override
